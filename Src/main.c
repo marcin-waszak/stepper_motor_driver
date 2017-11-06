@@ -40,7 +40,8 @@
 #include "stm32f3xx_hal.h"
 
 /* USER CODE BEGIN Includes */
-
+// should divide 64 000 000
+#define STEP_RESOLUTION 1000
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -48,6 +49,75 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+int qsin[32] = {
+  0,
+  100,
+  196,
+  284,
+  362,
+  426,
+  473,
+  502,
+  512,
+  502,
+  473,
+  426,
+  362,
+  284,
+  196,
+  100,
+  0,
+  -100,
+  -196,
+  -284,
+  -362,
+  -426,
+  -473,
+  -502,
+  -512,
+  -502,
+  -473,
+  -426,
+  -362,
+  -284,
+  -196,
+  -100
+};
+
+int qcos[32] = {
+  512,
+  502,
+  473,
+  426,
+  362,
+  284,
+  196,
+  100,
+  0,
+  -100,
+  -196,
+  -284,
+  -362,
+  -426,
+  -473,
+  -502,
+  -512,
+  -502,
+  -473,
+  -426,
+  -362,
+  -284,
+  -196,
+  -100,
+  0,
+  100,
+  196,
+  284,
+  362,
+  426,
+  473,
+  502
+};
 
 /* USER CODE END PV */
 
@@ -176,9 +246,9 @@ static void MX_TIM3_Init(void)
   TIM_OC_InitTypeDef sConfigOC;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 64000 - 1;
+  htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1000 - 1;
+  htim3.Init.Period = STEP_RESOLUTION - 1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -274,7 +344,21 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_SYSTICK_Callback(void)
 {
+  static int counter = 0;
+  static int microstep = 0;
 
+  if(counter == 50)
+  {
+  	counter = 0;
+  	++microstep;
+
+  	if(microstep == 32)
+  		microstep = 0;
+  }
+
+  ++counter;
+
+  TIM3->CCR2 = qsin[microstep] + 512;
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
