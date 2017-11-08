@@ -41,7 +41,7 @@
 
 /* USER CODE BEGIN Includes */
 // should divide 64 000 000
-#define STEP_RESOLUTION 1000
+#define STEP_RESOLUTION 500
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -50,73 +50,73 @@ TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 int qsin[32] = {
-  0,
-  100,
-  196,
-  284,
-  362,
-  426,
-  473,
-  502,
-  512,
-  502,
-  473,
-  426,
-  362,
-  284,
-  196,
-  100,
-  0,
-  -100,
-  -196,
-  -284,
-  -362,
-  -426,
-  -473,
-  -502,
-  -512,
-  -502,
-  -473,
-  -426,
-  -362,
-  -284,
-  -196,
-  -100
+	0,
+	98,
+	191,
+	278,
+	354,
+	416,
+	462,
+	490,
+	500,
+	490,
+	462,
+	416,
+	354,
+	278,
+	191,
+	98,
+	0,
+	-98,
+	-191,
+	-278,
+	-354,
+	-416,
+	-462,
+	-490,
+	-500,
+	-490,
+	-462,
+	-416,
+	-354,
+	-278,
+	-191,
+	-98
 };
 
 int qcos[32] = {
-  512,
-  502,
-  473,
-  426,
-  362,
-  284,
-  196,
-  100,
-  0,
-  -100,
-  -196,
-  -284,
-  -362,
-  -426,
-  -473,
-  -502,
-  -512,
-  -502,
-  -473,
-  -426,
-  -362,
-  -284,
-  -196,
-  -100,
-  0,
-  100,
-  196,
-  284,
-  362,
-  426,
-  473,
-  502
+	500,
+	490,
+	462,
+	416,
+	354,
+	278,
+	191,
+	98,
+	0,
+	-98,
+	-191,
+	-278,
+	-354,
+	-416,
+	-462,
+	-490,
+	-500,
+	-490,
+	-462,
+	-416,
+	-354,
+	-278,
+	-191,
+	-98,
+	0,
+	98,
+	191,
+	278,
+	354,
+	416,
+	462,
+	490,
 };
 
 /* USER CODE END PV */
@@ -171,10 +171,10 @@ int main(void)
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 
-  TIM3->CCR1 = 300;
+  TIM3->CCR1 = 0;
   TIM3->CCR2 = 0;
-  TIM3->CCR3 = 100;
-  TIM3->CCR4 = 900;
+  TIM3->CCR3 = 0;
+  TIM3->CCR4 = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -347,7 +347,7 @@ void HAL_SYSTICK_Callback(void)
   static int counter = 0;
   static int microstep = 0;
 
-  if(counter == 50)
+  if(counter == 25)
   {
   	counter = 0;
   	++microstep;
@@ -358,12 +358,18 @@ void HAL_SYSTICK_Callback(void)
 
   ++counter;
 
-  TIM3->CCR2 = qsin[microstep] + 512;
+  int a = qsin[microstep];
+  int b = qcos[microstep];
+
+  TIM3->CCR1 = a > 0 ? a : 0;
+  TIM3->CCR2 = a > 0 ? 0 : -a;
+  TIM3->CCR3 = b > 0 ? b : 0;
+  TIM3->CCR4 = b > 0 ? 0 : -b;
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  TIM3->CCR2 += 100;
+  //TIM3->CCR2 += 100;
 }
 /* USER CODE END 4 */
 
