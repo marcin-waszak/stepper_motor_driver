@@ -119,6 +119,9 @@ int qcos[32] = {
   490,
 };
 
+static int steps_total = 8;
+static int step = 0;
+static int counter = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -168,13 +171,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 
   TIM3->CCR1 = 0;
   TIM3->CCR2 = 0;
-  TIM3->CCR3 = 0;
-  TIM3->CCR4 = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -288,16 +287,6 @@ static void MX_TIM3_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
   HAL_TIM_MspPostInit(&htim3);
 
 }
@@ -321,10 +310,20 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PC0 PC1 PC2 PC3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : USART_TX_Pin USART_RX_Pin */
@@ -344,35 +343,56 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
-  static int counter = 0;
-  static int microstep = 0;
-
   if(htim->Instance != TIM3)
     return;
 
-  if(counter == 4000)
+  if(counter >= 1024 * 32 / steps_total)
   {
     counter = 0;
-    ++microstep;
+    ++step;
 
-    if(microstep == 32)
-      microstep = 0;
+    if(step >= steps_total)
+      step = 0;
   }
 
   ++counter;
 
-  int a = qsin[microstep];
-  int b = qcos[microstep];
+  int a = qsin[step * 32 / steps_total];
+  int b = qcos[step * 32 / steps_total];
 
-  TIM3->CCR1 = a > 0 ? a : 0;
-  TIM3->CCR2 = a > 0 ? 0 : -a;
-  TIM3->CCR3 = b > 0 ? b : 0;
-  TIM3->CCR4 = b > 0 ? 0 : -b;
+  if(a > 0)
+  {
+    TIM3->CCR1 = a;
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+  }
+  else
+  {
+    TIM3->CCR1 = -a;
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
+  }
+
+  if(b > 0)
+  {
+    TIM3->CCR2 = b;
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET);
+  }
+  else
+  {
+    TIM3->CCR2 = -b;
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_SET);
+  }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  //TIM3->CCR2 += 100;
+  steps_total *= 2;
+
+  if(steps_total > 32)
+    steps_total = 2;
 }
 /* USER CODE END 4 */
 
