@@ -119,6 +119,9 @@ int qcos[32] = {
   490,
 };
 
+static int steps_total = 8;
+static int step = 0;
+static int counter = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -344,25 +347,27 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
-  static int counter = 0;
-  static int microstep = 0;
-
   if(htim->Instance != TIM3)
     return;
 
-  if(counter == 4000)
+  if(counter >= 4096 * 32 / steps_total)
   {
     counter = 0;
-    ++microstep;
+    ++step;
 
-    if(microstep == 32)
-      microstep = 0;
+    if(step >= steps_total)
+      step = 0;
   }
+
+//  if(steps_total == 8) {
+//  	steps_total = 8;
+//  }
+
 
   ++counter;
 
-  int a = qsin[microstep];
-  int b = qcos[microstep];
+  int a = qsin[step * 32 / steps_total];
+  int b = qcos[step * 32 / steps_total];
 
   TIM3->CCR1 = a > 0 ? a : 0;
   TIM3->CCR2 = a > 0 ? 0 : -a;
@@ -372,7 +377,10 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  //TIM3->CCR2 += 100;
+	steps_total *= 2;
+
+	if(steps_total > 32)
+		steps_total = 2;
 }
 /* USER CODE END 4 */
 
