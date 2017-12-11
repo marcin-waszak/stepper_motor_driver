@@ -42,6 +42,7 @@
 /* USER CODE BEGIN Includes */
 // should divide 64 000 000
 #define STEP_RESOLUTION 500
+#define INIT_STEPPING 1
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -49,77 +50,141 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-int qsin[32] = {
+int qsin[64] = {
   0,
+  49,
   98,
+  145,
   191,
+  236,
   278,
+  317,
   354,
+  387,
   416,
+  441,
   462,
+  478,
   490,
+  498,
   500,
+  498,
   490,
+  478,
   462,
+  441,
   416,
+  387,
   354,
+  317,
   278,
+  236,
   191,
+  145,
   98,
+  49,
   0,
+  -49,
   -98,
+  -145,
   -191,
+  -236,
   -278,
+  -317,
   -354,
+  -387,
   -416,
+  -441,
   -462,
+  -478,
   -490,
+  -498,
   -500,
+  -498,
   -490,
+  -478,
   -462,
+  -441,
   -416,
+  -387,
   -354,
+  -317,
   -278,
+  -236,
   -191,
-  -98
+  -145,
+  -98,
+  -49,
 };
 
-int qcos[32] = {
+int qcos[64] = {
   500,
+  498,
   490,
+  478,
   462,
+  441,
   416,
+  387,
   354,
+  317,
   278,
+  236,
   191,
+  145,
   98,
+  49,
   0,
+  -49,
   -98,
+  -145,
   -191,
+  -236,
   -278,
+  -317,
   -354,
+  -387,
   -416,
+  -441,
   -462,
+  -478,
   -490,
+  -498,
   -500,
+  -498,
   -490,
+  -478,
   -462,
+  -441,
   -416,
+  -387,
   -354,
+  -317,
   -278,
+  -236,
   -191,
+  -145,
   -98,
+  -49,
   0,
+  49,
   98,
+  145,
   191,
+  236,
   278,
+  317,
   354,
+  387,
   416,
+  441,
   462,
+  478,
   490,
+  498,
 };
 
-static int steps_total = 8;
+static int steps_total = INIT_STEPPING;
 static int step = 0;
 static int counter = 0;
 /* USER CODE END PV */
@@ -346,19 +411,19 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance != TIM3)
     return;
 
-  if(counter >= 1024 * 32 / steps_total)
+  if(counter >= 32 * 64 / (8 * steps_total))
   {
     counter = 0;
     ++step;
 
-    if(step >= steps_total)
+    if(step >= (8 * steps_total))
       step = 0;
   }
 
   ++counter;
 
-  int a = qsin[step * 32 / steps_total];
-  int b = qcos[step * 32 / steps_total];
+  int a = qsin[step * 64 / (8 * steps_total)];
+  int b = qcos[step * 64 / (8 * steps_total)];
 
   if(a > 0)
   {
@@ -391,8 +456,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   steps_total *= 2;
 
-  if(steps_total > 32)
-    steps_total = 2;
+  if(steps_total > 8)
+    steps_total = INIT_STEPPING;
 }
 /* USER CODE END 4 */
 
