@@ -40,6 +40,8 @@
 #include "stm32f3xx_hal.h"
 
 /* USER CODE BEGIN Includes */
+#include <string.h>
+
 // should divide 64 000 000
 #define STEP_RESOLUTION 500
 #define INIT_STEPPING 1
@@ -47,6 +49,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim3;
+
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -184,15 +188,17 @@ int qcos[64] = {
   498,
 };
 
-static int steps_total = INIT_STEPPING;
+static uint8_t steps_total = INIT_STEPPING;
 static int step = 0;
 static int counter = 0;
+unsigned char receive_buffer[16];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_TIM3_Init(void);                                    
+static void MX_TIM3_Init(void);
+static void MX_USART2_UART_Init(void);                                    
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
 
@@ -200,6 +206,9 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* Private function prototypes -----------------------------------------------*/
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  HAL_UART_Receive_IT(&huart2, &steps_total, 1);
+}
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -232,6 +241,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM3_Init();
+  MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
@@ -239,6 +249,12 @@ int main(void)
 
   TIM3->CCR1 = 0;
   TIM3->CCR2 = 0;
+
+
+  char* msg = "Hello stepper!\n\r";
+  HAL_UART_Transmit_IT(&huart2, (uint8_t*)msg, strlen(msg));
+  HAL_UART_Receive_IT(&huart2, &steps_total, 1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -356,14 +372,32 @@ static void MX_TIM3_Init(void)
 
 }
 
+/* USART2 init function */
+static void MX_USART2_UART_Init(void)
+{
+
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /** Configure pins as 
         * Analog 
         * Input 
         * Output
         * EVENT_OUT
         * EXTI
-     PA2   ------> USART2_TX
-     PA3   ------> USART2_RX
 */
 static void MX_GPIO_Init(void)
 {
@@ -390,14 +424,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : USART_TX_Pin USART_RX_Pin */
-  GPIO_InitStruct.Pin = USART_TX_Pin|USART_RX_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
