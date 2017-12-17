@@ -54,7 +54,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-int qsin[64] = {
+const int qsin[64] = {
   0,
   49,
   98,
@@ -121,7 +121,7 @@ int qsin[64] = {
   -49,
 };
 
-int qcos[64] = {
+const int qcos[64] = {
   500,
   498,
   490,
@@ -188,9 +188,19 @@ int qcos[64] = {
   498,
 };
 
-static uint8_t steps_total = INIT_STEPPING;
-static int step = 0;
-static int counter = 0;
+typedef struct
+{
+    uint8_t mode;
+    uint8_t direction;
+    uint16_t speed;
+    uint16_t steps;
+} data_t; // 6 bytes
+
+data_t parameters = {INIT_STEPPING, 0, 4096, 0};
+//uint8_t steps_total = INIT_STEPPING;
+int step = 0;
+//int speed = 4096;
+int counter = 0;
 char receive_buffer[64];
 char send_buffer[64];
 /* USER CODE END PV */
@@ -207,9 +217,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* Private function prototypes -----------------------------------------------*/
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-  HAL_UART_Receive_IT(&huart2, &steps_total, 1);
-}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -252,9 +260,9 @@ int main(void)
   TIM3->CCR2 = 0;
 
 
-  char* msg = "Hello stepper!\n\r";
-  HAL_UART_Transmit_IT(&huart2, (uint8_t*)msg, strlen(msg));
-  HAL_UART_Receive_IT(&huart2, &steps_total, 1);
+  int size = sprintf(send_buffer, "Hello stepper!\n\r");
+  HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
+  HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
 
   /* USER CODE END 2 */
 
@@ -429,7 +437,6 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-
 }
 
 /* USER CODE BEGIN 4 */
@@ -438,27 +445,19 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance != TIM3)
     return;
 
-  if(counter >= 32 * 64 / (4 * steps_total))
-  {
-    counter = 0;
-    ++step;
-
-    if(step >= (4 * steps_total))
-      step = 0;
-
-// DEBUG
-//    int a = qsin[step * 64 / (4 * steps_total)];
-//    int b = qcos[step * 64 / (4 * steps_total)];
-//
-//
-//    int size = sprintf(send_buffer, "%d.\t%d %d\n\r", step, a, b);
-//    HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
-  }
-
   ++counter;
 
-  int a = qsin[step * 64 / (4 * steps_total)];
-  int b = qcos[step * 64 / (4 * steps_total)];
+  if(counter <= parameters.speed * 64 / (4 * parameters.mode))
+    return;
+
+  counter = 0;
+  ++step;
+
+  if(step >= (4 * parameters.mode))
+    step = 0;
+
+  int a = qsin[step * 64 / (4 * parameters.mode)];
+  int b = qcos[step * 64 / (4 * parameters.mode)];
 
   if(a > 0)
   {
@@ -489,10 +488,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  steps_total *= 2;
+//  int size = sprintf(send_buffer, "Repeats: %d\n\r", res);
+//  HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
+}
 
-  if(steps_total > 16)
-    steps_total = INIT_STEPPING;
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
 }
 /* USER CODE END 4 */
 

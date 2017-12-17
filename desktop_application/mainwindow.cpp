@@ -6,7 +6,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    step_sizes << "1" << "1/2" << "1/4" << "1/8";
+    step_sizes << "1" << "1/2" << "1/4" << "1/8" << "1/16";
 
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
         ui->serialPortComboBox->addItem(info.portName());
@@ -22,9 +22,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_stepSlider_valueChanged(int value)
 {
     ui->stepValueLabel->setText(step_sizes[value]);
-
-    char x = 1 << value;
-    serial.write(&x, 1);
+    TransmitParameters();
 }
 
 bool MainWindow::OpenSerialPort(const QString& port)
@@ -65,4 +63,24 @@ void MainWindow::on_connectButton_clicked()
 void MainWindow::on_disconnectButton_clicked()
 {
     CloseSerialPort();
+}
+
+void MainWindow::on_speedSlider_valueChanged(int value)
+{
+    ui->speedValueLabel->setText(QString::number(value));
+    TransmitParameters();
+}
+
+void MainWindow::TransmitParameters()
+{
+    data_t message = {
+        1u << ui->stepSlider->value(),
+        0,
+        static_cast<uint16_t>(ui->speedSlider->value()),
+        0
+    };
+
+    serial.write(reinterpret_cast<char*>(&message),
+                 sizeof(message));
+
 }
