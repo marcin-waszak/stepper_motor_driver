@@ -10,6 +10,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
         ui->serialPortComboBox->addItem(info.portName());
+
+    ui->disconnectButton->setEnabled(false);
 }
 
 MainWindow::~MainWindow()
@@ -20,4 +22,47 @@ MainWindow::~MainWindow()
 void MainWindow::on_stepSlider_valueChanged(int value)
 {
     ui->stepValueLabel->setText(step_sizes[value]);
+
+    char x = 1 << value;
+    serial.write(&x, 1);
+}
+
+bool MainWindow::OpenSerialPort(const QString& port)
+{
+    serial.setPortName(port);
+    serial.setBaudRate(QSerialPort::Baud115200);
+
+    if(!serial.open(QIODevice::ReadWrite))
+        return false;
+
+    ui->serialPortComboBox->setEnabled(false);
+    ui->connectButton->setEnabled(false);
+    ui->disconnectButton->setEnabled(true);
+
+    return true;
+}
+
+bool MainWindow::CloseSerialPort()
+{
+    serial.close();
+
+    ui->serialPortComboBox->setEnabled(true);
+    ui->connectButton->setEnabled(true);
+    ui->disconnectButton->setEnabled(false);
+
+    return true;
+}
+
+void MainWindow::on_connectButton_clicked()
+{
+    if(!OpenSerialPort(ui->serialPortComboBox->currentText()))
+        QMessageBox::critical(this, "Connection error",
+            "Cannot connect to the device! Error code: " + QString::number(serial.error()));
+
+    // Do something
+}
+
+void MainWindow::on_disconnectButton_clicked()
+{
+    CloseSerialPort();
 }
