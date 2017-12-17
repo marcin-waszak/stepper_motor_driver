@@ -12,6 +12,8 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->serialPortComboBox->addItem(info.portName());
 
     ui->disconnectButton->setEnabled(false);
+    ui->driverGroupBox->setEnabled(false);
+    ui->singleRotationGroupBox->setEnabled(false);
 }
 
 MainWindow::~MainWindow()
@@ -36,6 +38,7 @@ bool MainWindow::OpenSerialPort(const QString& port)
     ui->serialPortComboBox->setEnabled(false);
     ui->connectButton->setEnabled(false);
     ui->disconnectButton->setEnabled(true);
+    ui->driverGroupBox->setEnabled(true);
 
     return true;
 }
@@ -47,6 +50,7 @@ bool MainWindow::CloseSerialPort()
     ui->serialPortComboBox->setEnabled(true);
     ui->connectButton->setEnabled(true);
     ui->disconnectButton->setEnabled(false);
+    ui->driverGroupBox->setEnabled(false);
 
     return true;
 }
@@ -75,12 +79,21 @@ void MainWindow::TransmitParameters()
 {
     data_t message = {
         1u << ui->stepSlider->value(),
-        0,
+        ui->flipDirectionCheckBox->isChecked(),
         static_cast<uint16_t>(ui->speedSlider->value()),
         0
     };
 
     serial.write(reinterpret_cast<char*>(&message),
                  sizeof(message));
+}
 
+void MainWindow::on_loopedCheckBox_toggled(bool checked)
+{
+    ui->singleRotationGroupBox->setEnabled(!checked);
+}
+
+void MainWindow::on_flipDirectionCheckBox_toggled(bool checked)
+{
+    TransmitParameters();
 }

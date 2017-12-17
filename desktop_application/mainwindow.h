@@ -15,7 +15,7 @@ typedef struct
     uint8_t direction;
     uint16_t speed;
     uint16_t steps;
-} data_t; // 6 bytes
+} data_t;
 
 namespace Ui {
 class MainWindow;
@@ -37,6 +37,10 @@ private slots:
     void on_disconnectButton_clicked();
 
     void on_speedSlider_valueChanged(int value);
+
+    void on_loopedCheckBox_toggled(bool checked);
+
+    void on_flipDirectionCheckBox_toggled(bool checked);
 
 private:
     Ui::MainWindow *ui;

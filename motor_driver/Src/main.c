@@ -194,7 +194,7 @@ typedef struct
     uint8_t direction;
     uint16_t speed;
     uint16_t steps;
-} data_t; // 6 bytes
+} data_t;
 
 data_t parameters = {INIT_STEPPING, 0, 4096, 0};
 //uint8_t steps_total = INIT_STEPPING;
@@ -459,17 +459,26 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   int a = qsin[step * 64 / (4 * parameters.mode)];
   int b = qcos[step * 64 / (4 * parameters.mode)];
 
+  uint16_t a_pin_0 = GPIO_PIN_0;
+  uint16_t a_pin_1 = GPIO_PIN_1;
+
+  if(parameters.direction)
+  {
+    a_pin_0 = GPIO_PIN_1;
+    a_pin_1 = GPIO_PIN_0;
+  }
+
   if(a > 0)
   {
     TIM3->CCR1 = a;
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, a_pin_0, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, a_pin_1, GPIO_PIN_RESET);
   }
   else
   {
     TIM3->CCR1 = -a;
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, a_pin_0, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, a_pin_1, GPIO_PIN_SET);
   }
 
   if(b > 0)
