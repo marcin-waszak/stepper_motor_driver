@@ -191,7 +191,8 @@ int qcos[64] = {
 static uint8_t steps_total = INIT_STEPPING;
 static int step = 0;
 static int counter = 0;
-unsigned char receive_buffer[16];
+char receive_buffer[64];
+char send_buffer[64];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -437,19 +438,27 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance != TIM3)
     return;
 
-  if(counter >= 32 * 64 / (8 * steps_total))
+  if(counter >= 32 * 64 / (4 * steps_total))
   {
     counter = 0;
     ++step;
 
-    if(step >= (8 * steps_total))
+    if(step >= (4 * steps_total))
       step = 0;
+
+// DEBUG
+//    int a = qsin[step * 64 / (4 * steps_total)];
+//    int b = qcos[step * 64 / (4 * steps_total)];
+//
+//
+//    int size = sprintf(send_buffer, "%d.\t%d %d\n\r", step, a, b);
+//    HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
   }
 
   ++counter;
 
-  int a = qsin[step * 64 / (8 * steps_total)];
-  int b = qcos[step * 64 / (8 * steps_total)];
+  int a = qsin[step * 64 / (4 * steps_total)];
+  int b = qcos[step * 64 / (4 * steps_total)];
 
   if(a > 0)
   {
@@ -482,7 +491,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   steps_total *= 2;
 
-  if(steps_total > 8)
+  if(steps_total > 16)
     steps_total = INIT_STEPPING;
 }
 /* USER CODE END 4 */
