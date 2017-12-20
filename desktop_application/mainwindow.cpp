@@ -78,7 +78,7 @@ void MainWindow::on_speedSlider_valueChanged(int value)
 void MainWindow::TransmitParameters()
 {
     data_t message = {
-        1u << ui->stepSlider->value(),
+        1u << ui->stepSlider->value() | (ui->loopedCheckBox->isChecked() ? 0 : 0x80),
         ui->flipDirectionCheckBox->isChecked(),
         static_cast<uint16_t>(ui->speedSlider->value()),
         0
@@ -91,6 +91,7 @@ void MainWindow::TransmitParameters()
 void MainWindow::on_loopedCheckBox_toggled(bool checked)
 {
     ui->singleRotationGroupBox->setEnabled(!checked);
+    TransmitParameters();
 }
 
 void MainWindow::on_flipDirectionCheckBox_toggled(bool checked)

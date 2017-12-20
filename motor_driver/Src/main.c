@@ -445,19 +445,22 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance != TIM3)
     return;
 
+  if(parameters.mode & 0x80)
+    return;
+
   ++counter;
 
-  if(counter <= parameters.speed * 64 / (4 * parameters.mode))
+  if(counter <= parameters.speed * 64 / (4 * parameters.mode & 0x7F))
     return;
 
   counter = 0;
   ++step;
 
-  if(step >= (4 * parameters.mode))
+  if(step >= (4 * parameters.mode & 0x7F))
     step = 0;
 
-  int a = qsin[step * 64 / (4 * parameters.mode)];
-  int b = qcos[step * 64 / (4 * parameters.mode)];
+  int a = qsin[step * 64 / (4 * parameters.mode & 0x7F)];
+  int b = qcos[step * 64 / (4 * parameters.mode & 0x7F)];
 
   uint16_t a_pin_0 = GPIO_PIN_0;
   uint16_t a_pin_1 = GPIO_PIN_1;
