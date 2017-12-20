@@ -81,7 +81,7 @@ void MainWindow::TransmitParameters()
         1u << ui->stepSlider->value() | (ui->loopedCheckBox->isChecked() ? 0 : 0x80),
         ui->flipDirectionCheckBox->isChecked(),
         static_cast<uint16_t>(ui->speedSlider->value()),
-        0
+        ui->stepsLineEdit->text().toUInt() * (1u << ui->stepSlider->value())
     };
 
     serial.write(reinterpret_cast<char*>(&message),
@@ -95,6 +95,11 @@ void MainWindow::on_loopedCheckBox_toggled(bool checked)
 }
 
 void MainWindow::on_flipDirectionCheckBox_toggled(bool checked)
+{
+    TransmitParameters();
+}
+
+void MainWindow::on_rotateButton_clicked()
 {
     TransmitParameters();
 }

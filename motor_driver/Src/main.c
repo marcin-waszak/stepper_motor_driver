@@ -193,7 +193,7 @@ typedef struct
     uint8_t mode;
     uint8_t direction;
     uint16_t speed;
-    uint16_t steps;
+    uint32_t steps;
 } data_t;
 
 data_t parameters = {INIT_STEPPING, 0, 4096, 0};
@@ -445,13 +445,16 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance != TIM3)
     return;
 
-  if(parameters.mode & 0x80)
+  if(parameters.mode & 0x80 && !parameters.steps)
     return;
 
   ++counter;
 
   if(counter <= parameters.speed * 64 / (4 * parameters.mode & 0x7F))
     return;
+
+  if(parameters.steps)
+    --parameters.steps;
 
   counter = 0;
   ++step;

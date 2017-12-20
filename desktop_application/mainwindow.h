@@ -14,7 +14,7 @@ typedef struct
     uint8_t mode;
     uint8_t direction;
     uint16_t speed;
-    uint16_t steps;
+    uint32_t steps;
 } data_t;
 
 namespace Ui {
@@ -41,6 +41,8 @@ private slots:
     void on_loopedCheckBox_toggled(bool checked);
 
     void on_flipDirectionCheckBox_toggled(bool checked);
+
+    void on_rotateButton_clicked();
 
 private:
     Ui::MainWindow *ui;
