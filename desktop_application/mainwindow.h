@@ -44,12 +44,15 @@ private slots:
 
     void on_rotateButton_clicked();
 
+    void on_stopButton_clicked();
+
 private:
     Ui::MainWindow *ui;
     QStringList step_sizes;
     QSerialPort serial;
 
     void TransmitParameters();
+    void TransmitStop();
     bool OpenSerialPort(const QString& port);
     bool CloseSerialPort();
 };

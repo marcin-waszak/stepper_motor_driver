@@ -24,7 +24,8 @@ MainWindow::~MainWindow()
 void MainWindow::on_stepSlider_valueChanged(int value)
 {
     ui->stepValueLabel->setText(step_sizes[value]);
-    TransmitParameters();
+    if(ui->loopedCheckBox->isChecked())
+        TransmitParameters();
 }
 
 bool MainWindow::OpenSerialPort(const QString& port)
@@ -72,7 +73,8 @@ void MainWindow::on_disconnectButton_clicked()
 void MainWindow::on_speedSlider_valueChanged(int value)
 {
     ui->speedValueLabel->setText(QString::number(value));
-    TransmitParameters();
+    if(ui->loopedCheckBox->isChecked())
+        TransmitParameters();
 }
 
 void MainWindow::TransmitParameters()
@@ -88,18 +90,41 @@ void MainWindow::TransmitParameters()
                  sizeof(message));
 }
 
+void MainWindow::TransmitStop()
+{
+    data_t message = {
+        0x80,
+        0,
+        0,
+        0
+    };
+
+    serial.write(reinterpret_cast<char*>(&message),
+                 sizeof(message));
+}
+
 void MainWindow::on_loopedCheckBox_toggled(bool checked)
 {
     ui->singleRotationGroupBox->setEnabled(!checked);
-    TransmitParameters();
+
+    if(checked)
+        TransmitParameters();
+    else
+        TransmitStop();
 }
 
 void MainWindow::on_flipDirectionCheckBox_toggled(bool checked)
 {
-    TransmitParameters();
+    if(ui->loopedCheckBox->isChecked())
+        TransmitParameters();
 }
 
 void MainWindow::on_rotateButton_clicked()
 {
     TransmitParameters();
+}
+
+void MainWindow::on_stopButton_clicked()
+{
+    TransmitStop();
 }
