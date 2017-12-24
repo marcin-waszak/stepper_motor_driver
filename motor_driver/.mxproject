@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/Marcin/workspace_main/stepper_motor_driver/Inc
+HeaderPath=C:/Users/Marcin/workspace_main/stepper_motor_driver/motor_driver/Inc
 HeaderFiles=stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;
-SourcePath=C:/Users/Marcin/workspace_main/stepper_motor_driver/Src
+SourcePath=C:/Users/Marcin/workspace_main/stepper_motor_driver/motor_driver/Src
 SourceFiles=stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;stm32f3xx_it.c;stm32f3xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]

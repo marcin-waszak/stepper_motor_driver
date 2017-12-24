@@ -49,6 +49,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart2;
 
@@ -209,7 +210,8 @@ char send_buffer[64];
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_USART2_UART_Init(void);                                    
+static void MX_USART2_UART_Init(void);
+static void MX_TIM6_Init(void);                                    
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                                 
 
@@ -218,6 +220,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -251,10 +254,12 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM3_Init();
   MX_USART2_UART_Init();
+  MX_TIM6_Init();
 
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+  HAL_TIM_Base_Start_IT(&htim6);
 
   TIM3->CCR1 = 0;
   TIM3->CCR2 = 0;
@@ -381,6 +386,31 @@ static void MX_TIM3_Init(void)
 
 }
 
+/* TIM6 init function */
+static void MX_TIM6_Init(void)
+{
+
+  TIM_MasterConfigTypeDef sMasterConfig;
+
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 64000 - 1;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 1000 - 1;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /* USART2 init function */
 static void MX_USART2_UART_Init(void)
 {
@@ -421,6 +451,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
@@ -434,9 +467,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -509,6 +550,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if(htim->Instance != TIM6)
+    return;
+
+  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 }
 /* USER CODE END 4 */
 
