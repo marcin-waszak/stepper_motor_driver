@@ -265,8 +265,10 @@ int main(void)
   TIM3->CCR2 = 0;
 
 
-  int size = sprintf(send_buffer, "Hello stepper!\n\r");
-  HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
+  uint8_t data = 0;
+  data |= 1 << 0;
+  while(HAL_UART_Transmit_IT(&huart2, &data, sizeof(data)) != HAL_OK);
+
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
 
   /* USER CODE END 2 */
@@ -342,7 +344,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = STEP_RESOLUTION - 1;
+  htim3.Init.Period = 500 - 1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -395,7 +397,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 64000 - 1;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 1000 - 1;
+  htim6.Init.Period = 40 - 1;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -558,6 +560,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     return;
 
   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+
+  uint8_t data = 0;
+
+  // check if is during making single step
+  if(parameters.mode & 0x80 && parameters.steps)
+    data |= 1 << 1;
+
+  // TODO: check if temperature is ok
+  if(1024 > 2048)
+    data |= 1 << 2;
+
+  HAL_UART_Transmit_IT(&huart2, &data, sizeof(data));
 }
 /* USER CODE END 4 */
 

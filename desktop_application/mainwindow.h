@@ -6,6 +6,7 @@
 #include <QSerialPortInfo>
 #include <QSerialPort>
 #include <QMessageBox>
+#include <QTimer>
 
 #include <QDebug>
 
@@ -50,11 +51,18 @@ private:
     Ui::MainWindow *ui;
     QStringList step_sizes;
     QSerialPort serial;
+    QTimer timer;
 
     void TransmitParameters();
     void TransmitStop();
     bool OpenSerialPort(const QString& port);
     bool CloseSerialPort();
+
+    void ControlsEnabled(bool enabled);
+
+    void handleReadyRead();
+    void handleError(QSerialPort::SerialPortError error);
+    void handleTimeout();
 };
 
 #endif // MAINWINDOW_H

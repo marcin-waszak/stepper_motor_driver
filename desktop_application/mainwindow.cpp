@@ -11,6 +11,12 @@ MainWindow::MainWindow(QWidget *parent) :
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
         ui->serialPortComboBox->addItem(info.portName());
 
+    connect(&serial, &QSerialPort::readyRead, this, &MainWindow::handleReadyRead);
+    connect(&serial, &QSerialPort::errorOccurred, this, &MainWindow::handleError);
+    connect(&timer, &QTimer::timeout, this, &MainWindow::handleTimeout);
+
+    timer.start(1000);
+
     ui->disconnectButton->setEnabled(false);
     ui->driverGroupBox->setEnabled(false);
     ui->singleRotationGroupBox->setEnabled(false);
@@ -56,13 +62,34 @@ bool MainWindow::CloseSerialPort()
     return true;
 }
 
+void MainWindow::ControlsEnabled(bool enabled)
+{
+    ui->stepLabel->setEnabled(enabled);
+    ui->stepSlider->setEnabled(enabled);
+    ui->stepValueLabel->setEnabled(enabled);
+
+    ui->speedLabel->setEnabled(enabled);
+    ui->speedSlider->setEnabled(enabled);
+    ui->speedValueLabel->setEnabled(enabled);
+
+    ui->flipDirectionCheckBox->setEnabled(enabled);
+
+    ui->rotateButton->setEnabled(enabled);
+    ui->stopButton->setEnabled(!enabled);
+
+    ui->stepsLabel->setEnabled(enabled);
+    ui->stepsLineEdit->setEnabled(enabled);
+}
+
 void MainWindow::on_connectButton_clicked()
 {
     if(!OpenSerialPort(ui->serialPortComboBox->currentText()))
         QMessageBox::critical(this, "Connection error",
             "Cannot connect to the device! Error code: " + QString::number(serial.error()));
-
-    // Do something
+    else if(ui->loopedCheckBox->isChecked())
+        TransmitParameters();
+    else
+        TransmitStop();
 }
 
 void MainWindow::on_disconnectButton_clicked()
@@ -127,4 +154,35 @@ void MainWindow::on_rotateButton_clicked()
 void MainWindow::on_stopButton_clicked()
 {
     TransmitStop();
+}
+
+void MainWindow::handleReadyRead()
+{
+    auto data = serial.readAll();
+
+    for(auto &byte : data)
+    {
+        if(byte & 1 << 0)
+            CloseSerialPort();
+
+        ControlsEnabled(!(byte & 1 << 1));
+    }
+
+    timer.start(1000);
+}
+
+void MainWindow::handleError(QSerialPort::SerialPortError error)
+{
+    if (error == QSerialPort::ReadError)
+    {
+        qDebug() << "An I/O error occurred while reading "
+                            "the data from port";
+        //QCoreApplication::exit(1);
+    }
+}
+
+void MainWindow::handleTimeout()
+{
+    //disconnect
+    CloseSerialPort();
 }
