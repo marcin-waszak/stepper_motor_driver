@@ -197,7 +197,7 @@ typedef struct
     uint32_t steps;
 } data_t;
 
-data_t parameters = {INIT_STEPPING, 0, 4096, 0};
+data_t parameters = {1, 0, 32000, 0};
 //uint8_t steps_total = INIT_STEPPING;
 int step = 0;
 //int speed = 4096;
@@ -342,7 +342,7 @@ static void MX_TIM3_Init(void)
   TIM_OC_InitTypeDef sConfigOC;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 5 - 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 500 - 1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -508,6 +508,9 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   int a = qsin[step * 64 / (4 * parameters.mode & 0x7F)];
   int b = qcos[step * 64 / (4 * parameters.mode & 0x7F)];
 
+  //int size = sprintf(send_buffer, "%d\t%d\n\r", a, b);
+  //HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
+
   uint16_t a_pin_0 = GPIO_PIN_0;
   uint16_t a_pin_1 = GPIO_PIN_1;
 
@@ -548,6 +551,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 //  int size = sprintf(send_buffer, "Repeats: %d\n\r", res);
 //  HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
+  ++step;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
