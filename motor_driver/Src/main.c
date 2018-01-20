@@ -9,7 +9,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2017 STMicroelectronics
+  * COPYRIGHT(c) 2018 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -43,7 +43,7 @@
 #include <string.h>
 
 // should divide 64 000 000
-#define STEP_RESOLUTION 500
+#define STEP_RESOLUTION 256
 #define INIT_STEPPING 1
 /* USER CODE END Includes */
 
@@ -57,136 +57,136 @@ UART_HandleTypeDef huart2;
 /* Private variables ---------------------------------------------------------*/
 const int qsin[64] = {
   0,
-  49,
+  25,
+  50,
+  74,
   98,
-  145,
-  191,
-  236,
-  278,
-  317,
-  354,
-  387,
-  416,
-  441,
-  462,
-  478,
-  490,
-  498,
-  500,
-  498,
-  490,
-  478,
-  462,
-  441,
-  416,
-  387,
-  354,
-  317,
-  278,
-  236,
-  191,
-  145,
+  121,
+  142,
+  162,
+  181,
+  198,
+  213,
+  226,
+  237,
+  245,
+  251,
+  255,
+  256,
+  255,
+  251,
+  245,
+  237,
+  226,
+  213,
+  198,
+  181,
+  162,
+  142,
+  121,
   98,
-  49,
+  74,
+  50,
+  25,
   0,
-  -49,
+  -25,
+  -50,
+  -74,
   -98,
-  -145,
-  -191,
-  -236,
-  -278,
-  -317,
-  -354,
-  -387,
-  -416,
-  -441,
-  -462,
-  -478,
-  -490,
-  -498,
-  -500,
-  -498,
-  -490,
-  -478,
-  -462,
-  -441,
-  -416,
-  -387,
-  -354,
-  -317,
-  -278,
-  -236,
-  -191,
-  -145,
+  -121,
+  -142,
+  -162,
+  -181,
+  -198,
+  -213,
+  -226,
+  -237,
+  -245,
+  -251,
+  -255,
+  -256,
+  -255,
+  -251,
+  -245,
+  -237,
+  -226,
+  -213,
+  -198,
+  -181,
+  -162,
+  -142,
+  -121,
   -98,
-  -49,
+  -74,
+  -50,
+  -25,
 };
 
 const int qcos[64] = {
-  500,
-  498,
-  490,
-  478,
-  462,
-  441,
-  416,
-  387,
-  354,
-  317,
-  278,
-  236,
-  191,
-  145,
+  256,
+  255,
+  251,
+  245,
+  237,
+  226,
+  213,
+  198,
+  181,
+  162,
+  142,
+  121,
   98,
-  49,
+  74,
+  50,
+  25,
   0,
-  -49,
+  -25,
+  -50,
+  -74,
   -98,
-  -145,
-  -191,
-  -236,
-  -278,
-  -317,
-  -354,
-  -387,
-  -416,
-  -441,
-  -462,
-  -478,
-  -490,
-  -498,
-  -500,
-  -498,
-  -490,
-  -478,
-  -462,
-  -441,
-  -416,
-  -387,
-  -354,
-  -317,
-  -278,
-  -236,
-  -191,
-  -145,
+  -121,
+  -142,
+  -162,
+  -181,
+  -198,
+  -213,
+  -226,
+  -237,
+  -245,
+  -251,
+  -255,
+  -256,
+  -255,
+  -251,
+  -245,
+  -237,
+  -226,
+  -213,
+  -198,
+  -181,
+  -162,
+  -142,
+  -121,
   -98,
-  -49,
+  -74,
+  -50,
+  -25,
   0,
-  49,
+  25,
+  50,
+  74,
   98,
-  145,
-  191,
-  236,
-  278,
-  317,
-  354,
-  387,
-  416,
-  441,
-  462,
-  478,
-  490,
-  498,
+  121,
+  142,
+  162,
+  181,
+  198,
+  213,
+  226,
+  237,
+  245,
+  251,
+  255,
 };
 
 typedef struct
@@ -197,11 +197,9 @@ typedef struct
     uint32_t steps;
 } data_t;
 
-data_t parameters = {INIT_STEPPING, 0, 4096, 0};
-//uint8_t steps_total = INIT_STEPPING;
-int step = 0;
-//int speed = 4096;
-int counter = 0;
+volatile data_t parameters = {INIT_STEPPING, 0, 200, 0};
+volatile int step = 0;
+volatile int counter = 0;
 char receive_buffer[64];
 char send_buffer[64];
 /* USER CODE END PV */
@@ -263,7 +261,6 @@ int main(void)
 
   TIM3->CCR1 = 0;
   TIM3->CCR2 = 0;
-
 
   uint8_t data = 0;
   data |= 1 << 0;
@@ -342,9 +339,9 @@ static void MX_TIM3_Init(void)
   TIM_OC_InitTypeDef sConfigOC;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 10 - 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 500 - 1;
+  htim3.Init.Period = 256 - 1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)

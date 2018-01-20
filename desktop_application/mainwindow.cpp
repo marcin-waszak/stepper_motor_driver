@@ -20,6 +20,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->disconnectButton->setEnabled(false);
     ui->driverGroupBox->setEnabled(false);
     ui->singleRotationGroupBox->setEnabled(false);
+
+    ui->speedValueLabel->setText(QString::number(ui->speedSlider->value()));
 }
 
 MainWindow::~MainWindow()
