@@ -203,6 +203,10 @@ typedef struct
 volatile data_t parameters = {INIT_STEPPING, 0, 200, 0};
 volatile int step = 0;
 volatile int counter = 0;
+volatile uint8_t is_overheat = 0;
+volatile uint8_t is_overvoltage = 0;
+uint16_t adc_dma_values[2];
+
 char receive_buffer[64];
 char send_buffer[64];
 /* USER CODE END PV */
@@ -263,6 +267,8 @@ int main(void)
   MX_ADC1_Init();
 
   /* USER CODE BEGIN 2 */
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_dma_values, 2);
+
   HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
   HAL_TIM_Base_Start_IT(&htim6);
@@ -272,7 +278,7 @@ int main(void)
 
   uint8_t data = 0;
   data |= 1 << 0;
-  while(HAL_UART_Transmit_IT(&huart2, &data, sizeof(data)) != HAL_OK);
+  HAL_UART_Transmit(&huart2, &data, sizeof(data), 0xFF);
 
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
 
@@ -298,7 +304,6 @@ void SystemClock_Config(void)
 
   RCC_OscInitTypeDef RCC_OscInitStruct;
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
-  RCC_PeriphCLKInitTypeDef PeriphClkInit;
 
     /**Initializes the CPU, AHB and APB busses clocks 
     */
@@ -327,13 +332,6 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC12;
-  PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
     /**Configure the Systick interrupt time 
     */
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
@@ -356,7 +354,7 @@ static void MX_ADC1_Init(void)
     /**Common config 
     */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
@@ -387,7 +385,7 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank = 1;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.SamplingTime = ADC_SAMPLETIME_181CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_61CYCLES_5;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -397,6 +395,7 @@ static void MX_ADC1_Init(void)
 
     /**Configure Regular Channel 
     */
+  sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = 2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -469,7 +468,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 64000 - 1;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 200 - 1;
+  htim6.Init.Period = 40 - 1;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -575,6 +574,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance != TIM3)
     return;
 
+  if(is_overheat || is_overvoltage) {
+    TIM3->CCR1 = 0;
+    TIM3->CCR2 = 0;
+    return;
+  }
+
   if(parameters.mode & 0x80 && !parameters.steps)
     return;
 
@@ -633,12 +638,17 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-//  int size = sprintf(send_buffer, "Repeats: %d\n\r", res);
+//  int size = sprintf(send_buffer, "Repeats: %d\n\r", 666);
 //  HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
+
+  uint8_t datadd = 255;
+
+  HAL_UART_Transmit_IT(&huart2, &datadd, 1);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
+  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
@@ -654,11 +664,23 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if(parameters.mode & 0x80 && parameters.steps)
     data |= 1 << 1;
 
-  // TODO: check if temperature is ok
-  if(1024 > 2048)
-    data |= 1 << 2;
+  if(adc_dma_values[0] < 3200)
+    is_overheat = 0;
 
-  HAL_UART_Transmit_IT(&huart2, &data, sizeof(data));
+  if(adc_dma_values[0] > 3600 || is_overheat) {
+    is_overheat = 1;
+    data |= 1 << 2;
+  }
+
+  if(adc_dma_values[1] < 1024)
+    is_overvoltage = 0;
+
+  if(adc_dma_values[1] > 2048 || is_overvoltage) {
+    is_overvoltage = 1;
+    data |= 1 << 3;
+  }
+
+  HAL_UART_Transmit(&huart2, &data, sizeof(data), 0xFF);
 }
 /* USER CODE END 4 */
 
