@@ -168,6 +168,15 @@ void MainWindow::handleReadyRead()
             CloseSerialPort();
 
         ControlsEnabled(!(byte & 1 << 1));
+
+        if(byte & 1 << 2) {
+            ControlsEnabled(false);
+            ui->temperatureLabel->setText("Temperature: Overheat");
+        } else {
+            ControlsEnabled(true);
+            ui->temperatureLabel->setText("Temperature: Ok");
+        }
+
     }
 
     timer.start(1000);
