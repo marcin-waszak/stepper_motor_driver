@@ -513,7 +513,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 14);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
 }
@@ -657,20 +657,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 
-  uint8_t data = 0;
+  uint8_t data = 0b10101010;
   const char* xxxx = "Huu huj\r\n";
 
   // check if is during making single step
   //if(parameters.mode & 0x80 && parameters.steps)
     //data |= 1 << 1;
 
-  if(adc_dma_values[0] < 3200)
-    is_overheat = 0;
-
-  if(adc_dma_values[0] > 3600 || is_overheat) {
-    is_overheat = 1;
-    //data |= 1 << 2;
-  }
+//  if(adc_dma_values[0] < 3200)
+//    is_overheat = 0;
+//
+//  if(adc_dma_values[0] > 3600 || is_overheat) {
+//    is_overheat = 1;
+//    //data |= 1 << 2;
+//  }
 
   int size = sprintf(send_buffer, "Repeats: %d\n\r", 666);
   HAL_UART_Transmit_IT(&huart2, &data, 1);
