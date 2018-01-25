@@ -164,6 +164,17 @@ void MainWindow::handleReadyRead()
 
     for(auto &byte : data)
     {
+        if((byte & 0b11100000) != 0b10100000) {
+//            CloseSerialPort();
+            qDebug() << "Received corrupted data. Dropped:" << QString::number(byte, 2);
+//            QMessageBox::critical(this, "Connection error",
+//                "Received incorrect data. Make sure a port is appropriate.");
+
+            return;
+        }
+
+        // add bad bytes counter
+
         if(byte & 1 << 0)
             CloseSerialPort();
 

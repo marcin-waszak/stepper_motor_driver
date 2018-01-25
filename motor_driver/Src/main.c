@@ -276,9 +276,8 @@ int main(void)
   TIM3->CCR1 = 0;
   TIM3->CCR2 = 0;
 
-  uint8_t data = 0;
-  data |= 1 << 0;
-  HAL_UART_Transmit(&huart2, &data, sizeof(data), 0xFF);
+  uint8_t data = 0b10100001;
+  while(HAL_UART_Transmit_IT(&huart2, &data, sizeof(data)) != HAL_OK);
 
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
 
@@ -341,7 +340,7 @@ void SystemClock_Config(void)
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 4);
 }
 
 /* ADC1 init function */
@@ -514,7 +513,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 5);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
 }
@@ -563,7 +562,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 4);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
@@ -658,7 +657,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 
-  uint8_t data = 0;
+  uint8_t data = 0b10100000;
 
   // check if is during making single step
   if(parameters.mode & 0x80 && parameters.steps)
@@ -680,7 +679,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     data |= 1 << 3;
   }
 
-  HAL_UART_Transmit(&huart2, &data, sizeof(data), 0xFF);
+  if(adc_dma_values[1] < 512) {
+    data |= 1 << 4;
+  }
+
+  HAL_UART_Transmit_IT(&huart2, &data, sizeof(data));
 }
 /* USER CODE END 4 */
 
