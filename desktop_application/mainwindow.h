@@ -10,10 +10,17 @@
 
 #include <QDebug>
 
+#define IS_HEADER(in)           (((in) & 0b11100000) == 0b10100000)
+#define IS_RESET(in)            ((in) & 1 << 0)
+#define IS_SINGLESTEPPING(in)   ((in) & 1 << 1)
+#define IS_OVERHEAT(in)         ((in) & 1 << 2)
+#define IS_OVERVOLTAGE(in)      ((in) & 1 << 3)
+#define IS_UNDERVOLTAGE(in)     ((in) & 1 << 4)
+
 typedef struct
 {
+    uint8_t header;
     uint8_t mode;
-    uint8_t direction;
     uint16_t speed;
     uint32_t steps;
 } data_t;

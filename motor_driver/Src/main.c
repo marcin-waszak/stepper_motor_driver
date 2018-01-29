@@ -42,9 +42,20 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 
-// should divide 64 000 000
 #define STEP_RESOLUTION 256
-#define INIT_STEPPING 1
+
+#define D_HEADER          0b10101010
+#define D_STOP(in)        (in.mode & 0b10000000)
+#define D_DIRECTION(in)   (in.mode & 0b01000000)
+#define D_STEP_SIZE(in)   (in.mode & 0b00111111)
+
+#define S_HEADER          0b10100000
+#define S_RESET           0b00000001
+#define S_SINGLESTEPPING  0b00000010
+#define S_OVERHEAT        0b00000100
+#define S_OVERVOLTAGE     0b00001000
+#define S_UNDERVOLTAGE    0b00010000
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -192,10 +203,6 @@ const int16_t qcos[64] = {
   255,
 };
 
-#define GET_STOP(in)      (in.mode & 0b10000000)
-#define GET_DIRECTION(in) (in.mode & 0b01000000)
-#define GET_STEP_SIZE(in) (in.mode & 0b00111111)
-
 typedef struct
 {
     uint8_t header;
@@ -204,7 +211,7 @@ typedef struct
     uint32_t steps;
 } data_t;
 
-volatile data_t parameters = {0, 0b00000001, 200, 0};
+volatile data_t parameters = {0, 1, 200, 0};
 volatile data_t temp_parameters;
 volatile int step = 0;
 volatile int counter = 0;
@@ -419,7 +426,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 10 - 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 256 - 1;
+  htim3.Init.Period = STEP_RESOLUTION - 1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -584,12 +591,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     return;
   }
 
-  if(GET_STOP(parameters) && !parameters.steps)
+  if(D_STOP(parameters) && !parameters.steps)
     return;
 
   ++counter;
 
-  if(counter <= parameters.speed * 64 / (4 * GET_STEP_SIZE(parameters)))
+  if(counter <= parameters.speed * 64 / (4 * D_STEP_SIZE(parameters)))
     return;
 
   if(parameters.steps)
@@ -598,16 +605,16 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   counter = 0;
   ++step;
 
-  if(step >= (4 * GET_STEP_SIZE(parameters)))
+  if(step >= (4 * D_STEP_SIZE(parameters)))
     step = 0;
 
-  int a = qsin[step * 64 / (4 * GET_STEP_SIZE(parameters))];
-  int b = qcos[step * 64 / (4 * GET_STEP_SIZE(parameters))];
+  int a = qsin[step * 64 / (4 * D_STEP_SIZE(parameters))];
+  int b = qcos[step * 64 / (4 * D_STEP_SIZE(parameters))];
 
   uint16_t a_pin_0 = GPIO_PIN_0;
   uint16_t a_pin_1 = GPIO_PIN_1;
 
-  if(GET_DIRECTION(parameters))
+  if(D_DIRECTION(parameters))
   {
     a_pin_0 = GPIO_PIN_1;
     a_pin_1 = GPIO_PIN_0;
@@ -642,16 +649,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-//  int size = sprintf(send_buffer, "Repeats: %d\n\r", 666);
-//  HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_buffer, size);
 
-  uint8_t datadd = 255;
-
-  HAL_UART_Transmit_IT(&huart2, &datadd, 1);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-  if(temp_parameters.header == 0b10101010)
+  // check if received data are correct
+  if(temp_parameters.header == D_HEADER)
     parameters = temp_parameters;
 
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&temp_parameters, sizeof(temp_parameters));
@@ -665,18 +668,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 
-  uint8_t data = 0b10100000;
+  uint8_t data = S_HEADER;
 
   // check if is during making single step
-  if(GET_STOP(parameters) && parameters.steps)
-    data |= 1 << 1;
+  if(D_STOP(parameters) && parameters.steps)
+    data |= S_SINGLESTEPPING;
 
   if(adc_dma_values[0] < 3200)
     is_overheat = 0;
 
   if(adc_dma_values[0] > 3600 || is_overheat) {
     is_overheat = 1;
-    data |= 1 << 2;
+    data |= S_OVERHEAT;
   }
 
   if(adc_dma_values[1] < 1024)
@@ -684,12 +687,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if(adc_dma_values[1] > 2048 || is_overvoltage) {
     is_overvoltage = 1;
-    data |= 1 << 3;
+    data |= S_OVERVOLTAGE;
   }
 
-  if(adc_dma_values[1] < 512) {
-    data |= 1 << 4;
-  }
+  if(adc_dma_values[1] < 512)
+    data |= S_UNDERVOLTAGE;
 
   HAL_UART_Transmit_IT(&huart2, &data, sizeof(data));
 }

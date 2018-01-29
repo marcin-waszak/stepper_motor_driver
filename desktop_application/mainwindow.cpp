@@ -166,37 +166,44 @@ void MainWindow::on_stopButton_clicked()
 void MainWindow::handleReadyRead()
 {
     auto data = serial.readAll();
+    static uint8_t bad_bytes_counter = 0;
 
-    for(auto &byte : data)
+    for(auto& byte : data)
     {
-        if((byte & 0b11100000) != 0b10100000) {
-//            CloseSerialPort();
-            qDebug() << "Received corrupted data. Dropped:" << QString::number(byte, 2);
-//            QMessageBox::critical(this, "Connection error",
-//                "Received incorrect data. Make sure a port is appropriate.");
+        if(!IS_HEADER(byte)) {
+            if(++bad_bytes_counter == 4) {
+                bad_bytes_counter = 0;
+                CloseSerialPort();
 
-            return;
+                QMessageBox::critical(this, "Connection error",
+                "Receiving incorrect data. Make sure a port is appropriate.");
+
+                return;
+            }
+
+            qDebug() << "Received corrupted data. Dropped:"
+                     << QString::number(byte, 2);
+            continue;
         }
 
-        // add bad bytes counter
+        bad_bytes_counter = 0;
 
-        if(byte & 1 << 0)
+        if(IS_RESET(byte))
             CloseSerialPort();
 
-        ControlsEnabled(!(byte & 1 << 1));
+        ControlsEnabled(!IS_SINGLESTEPPING(byte));
 
-        if(byte & 1 << 2) {
+        if(IS_OVERHEAT(byte))
             ui->temperatureLabel->setText("Temperature: Overheat");
-        } else {
+        else
             ui->temperatureLabel->setText("Temperature: Ok");
-        }
 
-        if(byte & 1 << 3) {
+        if(IS_OVERVOLTAGE(byte))
             ui->voltageLabel->setText("Voltage: Overvoltage");
-        } else {
+        else if (IS_UNDERVOLTAGE(byte))
+            ui->voltageLabel->setText("Voltage: Undervoltage");
+        else
             ui->voltageLabel->setText("Voltage: Ok");
-        }
-
     }
 
     timer.start(1000);
