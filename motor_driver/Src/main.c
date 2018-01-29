@@ -58,7 +58,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-const int qsin[64] = {
+const int16_t qsin[64] = {
   0,
   25,
   50,
@@ -125,7 +125,7 @@ const int qsin[64] = {
   -25,
 };
 
-const int qcos[64] = {
+const int16_t qcos[64] = {
   256,
   255,
   251,
@@ -191,16 +191,21 @@ const int qcos[64] = {
   251,
   255,
 };
+
+#define GET_STOP(in)      (in.mode & 0b10000000)
+#define GET_DIRECTION(in) (in.mode & 0b01000000)
+#define GET_STEP_SIZE(in) (in.mode & 0b00111111)
 
 typedef struct
 {
+    uint8_t header;
     uint8_t mode;
-    uint8_t direction;
     uint16_t speed;
     uint32_t steps;
 } data_t;
 
-volatile data_t parameters = {INIT_STEPPING, 0, 200, 0};
+volatile data_t parameters = {0, 0b00000001, 200, 0};
+volatile data_t temp_parameters;
 volatile int step = 0;
 volatile int counter = 0;
 volatile uint8_t is_overheat = 0;
@@ -279,7 +284,7 @@ int main(void)
   uint8_t data = 0b10100001;
   while(HAL_UART_Transmit_IT(&huart2, &data, sizeof(data)) != HAL_OK);
 
-  HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
+  HAL_UART_Receive_IT(&huart2, (uint8_t*)&temp_parameters, sizeof(temp_parameters));
 
   /* USER CODE END 2 */
 
@@ -579,12 +584,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     return;
   }
 
-  if(parameters.mode & 0x80 && !parameters.steps)
+  if(GET_STOP(parameters) && !parameters.steps)
     return;
 
   ++counter;
 
-  if(counter <= parameters.speed * 64 / (4 * parameters.mode & 0x7F))
+  if(counter <= parameters.speed * 64 / (4 * GET_STEP_SIZE(parameters)))
     return;
 
   if(parameters.steps)
@@ -593,16 +598,16 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   counter = 0;
   ++step;
 
-  if(step >= (4 * parameters.mode & 0x7F))
+  if(step >= (4 * GET_STEP_SIZE(parameters)))
     step = 0;
 
-  int a = qsin[step * 64 / (4 * parameters.mode & 0x7F)];
-  int b = qcos[step * 64 / (4 * parameters.mode & 0x7F)];
+  int a = qsin[step * 64 / (4 * GET_STEP_SIZE(parameters))];
+  int b = qcos[step * 64 / (4 * GET_STEP_SIZE(parameters))];
 
   uint16_t a_pin_0 = GPIO_PIN_0;
   uint16_t a_pin_1 = GPIO_PIN_1;
 
-  if(parameters.direction)
+  if(GET_DIRECTION(parameters))
   {
     a_pin_0 = GPIO_PIN_1;
     a_pin_1 = GPIO_PIN_0;
@@ -646,7 +651,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-  HAL_UART_Receive_IT(&huart2, (uint8_t*)&parameters, sizeof(parameters));
+  if(temp_parameters.header == 0b10101010)
+    parameters = temp_parameters;
+
+  HAL_UART_Receive_IT(&huart2, (uint8_t*)&temp_parameters, sizeof(temp_parameters));
   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 }
 
@@ -660,7 +668,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   uint8_t data = 0b10100000;
 
   // check if is during making single step
-  if(parameters.mode & 0x80 && parameters.steps)
+  if(GET_STOP(parameters) && parameters.steps)
     data |= 1 << 1;
 
   if(adc_dma_values[0] < 3200)

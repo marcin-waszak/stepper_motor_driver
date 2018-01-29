@@ -108,9 +108,14 @@ void MainWindow::on_speedSlider_valueChanged(int value)
 
 void MainWindow::TransmitParameters()
 {
+    uint8_t mode = 0b00000000;
+    mode |= ui->loopedCheckBox->isChecked() ? 0 : 0b10000000;
+    mode |= ui->flipDirectionCheckBox->isChecked() ? 0 : 0b01000000;
+    mode |= 1u << ui->stepSlider->value() & 0b00111111;
+
     data_t message = {
-        1u << ui->stepSlider->value() | (ui->loopedCheckBox->isChecked() ? 0 : 0x80),
-        ui->flipDirectionCheckBox->isChecked(),
+        0b10101010,
+        mode,
         static_cast<uint16_t>(ui->speedSlider->value()),
         ui->stepsLineEdit->text().toUInt() * (1u << ui->stepSlider->value())
     };
@@ -122,8 +127,8 @@ void MainWindow::TransmitParameters()
 void MainWindow::TransmitStop()
 {
     data_t message = {
-        0x80,
-        0,
+        0b10101010,
+        0b10000000,
         0,
         0
     };
