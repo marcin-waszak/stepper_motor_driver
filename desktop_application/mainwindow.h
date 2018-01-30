@@ -66,6 +66,7 @@ private:
     bool CloseSerialPort();
 
     void ControlsEnabled(bool enabled);
+    void SetUnknownStatus();
 
     void handleReadyRead();
     void handleError(QSerialPort::SerialPortError error);

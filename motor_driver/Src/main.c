@@ -288,7 +288,7 @@ int main(void)
   TIM3->CCR1 = 0;
   TIM3->CCR2 = 0;
 
-  uint8_t data = 0b10100001;
+  uint8_t data = S_HEADER | S_RESET;
   while(HAL_UART_Transmit_IT(&huart2, &data, sizeof(data)) != HAL_OK);
 
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&temp_parameters, sizeof(temp_parameters));
@@ -426,7 +426,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 10 - 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = STEP_RESOLUTION - 1;
+  htim3.Init.Period = 256 - 1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -591,11 +591,13 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     return;
   }
 
+  // if is not looped and there are no steps to be made, then do nothing
   if(D_STOP(parameters) && !parameters.steps)
     return;
 
   ++counter;
 
+  // is there need to make next step?
   if(counter <= parameters.speed * 64 / (4 * D_STEP_SIZE(parameters)))
     return;
 
@@ -605,15 +607,18 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   counter = 0;
   ++step;
 
+  // just a modulo
   if(step >= (4 * D_STEP_SIZE(parameters)))
     step = 0;
 
+  // get next step value
   int a = qsin[step * 64 / (4 * D_STEP_SIZE(parameters))];
   int b = qcos[step * 64 / (4 * D_STEP_SIZE(parameters))];
 
   uint16_t a_pin_0 = GPIO_PIN_0;
   uint16_t a_pin_1 = GPIO_PIN_1;
 
+  // if direction if flipped, then reverse the polarity of phase A
   if(D_DIRECTION(parameters))
   {
     a_pin_0 = GPIO_PIN_1;
@@ -649,7 +654,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-
+  // blue button pressed
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
@@ -674,23 +679,28 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if(D_STOP(parameters) && parameters.steps)
     data |= S_SINGLESTEPPING;
 
+  // check if is cooled enough
   if(adc_dma_values[0] < 3200)
     is_overheat = 0;
 
+  // check if is overheated
   if(adc_dma_values[0] > 3600 || is_overheat) {
     is_overheat = 1;
     data |= S_OVERHEAT;
   }
 
-  if(adc_dma_values[1] < 1024)
+  // power supply 12.5V - is OK
+  if(adc_dma_values[1] < 1536)
     is_overvoltage = 0;
 
-  if(adc_dma_values[1] > 2048 || is_overvoltage) {
+  // power supply 14V - overvoltage
+  if(adc_dma_values[1] > 1720 || is_overvoltage) {
     is_overvoltage = 1;
     data |= S_OVERVOLTAGE;
   }
 
-  if(adc_dma_values[1] < 512)
+  // power supply 5.5V - undervoltage
+  if(adc_dma_values[1] < 676)
     data |= S_UNDERVOLTAGE;
 
   HAL_UART_Transmit_IT(&huart2, &data, sizeof(data));

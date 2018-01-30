@@ -8,9 +8,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     step_sizes << "1" << "1/2" << "1/4" << "1/8" << "1/16";
 
+    // get available serial ports
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
         ui->serialPortComboBox->addItem(info.portName());
 
+    // setup callbacks
     connect(&serial, &QSerialPort::readyRead, this, &MainWindow::handleReadyRead);
     connect(&serial, &QSerialPort::errorOccurred, this, &MainWindow::handleError);
     connect(&timer, &QTimer::timeout, this, &MainWindow::handleTimeout);
@@ -22,6 +24,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->singleRotationGroupBox->setEnabled(false);
 
     ui->speedValueLabel->setText(QString::number(ui->speedSlider->value()));
+
+    SetUnknownStatus();
 }
 
 MainWindow::~MainWindow()
@@ -61,6 +65,8 @@ bool MainWindow::CloseSerialPort()
     ui->disconnectButton->setEnabled(false);
     ui->driverGroupBox->setEnabled(false);
 
+    SetUnknownStatus();
+
     return true;
 }
 
@@ -75,12 +81,19 @@ void MainWindow::ControlsEnabled(bool enabled)
     ui->speedValueLabel->setEnabled(enabled);
 
     ui->flipDirectionCheckBox->setEnabled(enabled);
+    ui->loopedCheckBox->setEnabled(enabled);
 
     ui->rotateButton->setEnabled(enabled);
     ui->stopButton->setEnabled(!enabled);
 
     ui->stepsLabel->setEnabled(enabled);
     ui->stepsLineEdit->setEnabled(enabled);
+}
+
+void MainWindow::SetUnknownStatus()
+{
+    ui->temperatureLabel->setText("Temperature: Unknown");
+    ui->voltageLabel->setText("Voltage: Unknown");
 }
 
 void MainWindow::on_connectButton_clicked()
